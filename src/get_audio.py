@@ -11,6 +11,7 @@ import time
 import rospy
 import wave
 import pyaudio
+import wave
 from std_msgs.msg import Int8
 from std_msgs.msg import String
 
@@ -29,11 +30,11 @@ class get_audio():
         self.RECORD_SECONDS = 10
         # Ros params
         self.start_record = False
-        self.stop_record = False
-        self.project_name = '/home/kamerider/catkin_ws/src/kamerider_speech/sounds/gpsr'
+        self.stop_record  = False
+        self.project_name = '/home/kamerider/catkin_ws/src/kamerider_speech/sounds/gpsr_record/gpsr'
         self.count = 0
         self.sub_pocketsphinx_topic_name = None
-        self.pub_record_end_topic_name = None
+        self.pub_record_end_topic_name   = None
         self.pub_record_index_topic_name = None
         self.get_params()
     
@@ -41,28 +42,56 @@ class get_audio():
         self.recorder = pyaudio.PyAudio()
     
     def get_params(self):
-        self.sub_pocketsphinx_topic_name = rospy.get_param("sub_pocketsphinx_topic_name", "/jsgf_audio")
+        self.sub_pocketsphinx_topic_name  = rospy.get_param("sub_pocketsphinx_topic_name", "/kws_data")
         self.pub_record_end_topic_name    = rospy.get_param("pub_record_end_topic_name",   "/audio_record")
         self.pub_record_index_topic_name  = rospy.get_param("pub_record_index_topic_name", "/audio_index")
         
         rospy.Subscriber(self.sub_pocketsphinx_topic_name, String, self.pocketCallback)
         self.pub_record = rospy.Publisher(self.pub_record_end_topic_name, String, queue_size=1)
         self.pub_index  = rospy.Publisher(self.pub_record_index_topic_name, Int8, queue_size=1)
+    
+    def play_signale_sound(self):
+        chunk = 1024
+        # 打开 .wav 音频文件
+        f = wave.open('/home/kamerider/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav', 'rb')
+        # 初始化pyaudio
+        p = pyaudio.PyAudio()
+        # 打开一个stream
+        stream = p.open(
+            format = p.get_format_from_width(f.getsampwidth()),
+            channels = f.getnchannels(),
+            rate = f.getframerate(),
+            output = True
+        )
+        # 读取音频文件中的数据
+        data = f.readframes(chunk)
+
+        # 播放音频文件
+        while data != '':
+            stream.write(data)
+            data = f.readframes(chunk)
+        
+        # 终止stream
+        stream.stop_stream()
+        stream.close()
+        # 关闭pyaudio
+        p.terminate()
 
     def pocketCallback(self, msg):
-        if msg.data.lower() == 'jack':
+        if msg.data.lower().strip() == 'jack':
             self.start_record = True
-            while(True):
-                self.get_audio()
+            self.stop_record  = False
+            self.get_audio()
         
-        if msg.data.lower() == 'ok':
+        if msg.data.lower().strip() == 'ok':
             self.stop_record = True
         
     def get_audio(self):
         if self.start_record:
             self.setup_recorder()
+            self.play_signale_sound()
             file_name = self.project_name + '_' + str(self.count) + '.wav'
-            print ("Start to record input audio and save to file: %s"%(file_name))
+            print ("[INFO] Start to record input audio and save to file: %s"%(file_name))
             stream = self.recorder.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
@@ -73,11 +102,11 @@ class get_audio():
             frames = []
             for i in range(int(self.RATE / self.CHUNK * self.RECORD_SECONDS)):
                 if self.stop_record:
-                    print ("Stop recording")
+                    print ("[INFO] Stop recording")
                     break
                 data = stream.read(self.CHUNK)
                 frames.append(data)
-            print ("Recording finised now save .wav file")
+            print ("[INFO] Recording finised now save .wav file")
 
             stream.stop_stream()
             stream.close()

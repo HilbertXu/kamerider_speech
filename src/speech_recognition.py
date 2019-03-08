@@ -44,11 +44,15 @@ class speech_recognition_xfei():
         cur_time = str(int(time.time()))
         param = "{\"aue\":\"" + aue + "\"" + ",\"engine_type\":\"" + engineType + "\"}"
         print ("param: {}".format(param))
-        param_base64 = str(base64.b64encode(param.encode('utf-8')))
+        try:
+            param_base64 = str(base64.b64encode(param.encode('utf-8')), 'utf-8')
+        except:
+            param_base64 = str(base64.b64encode(param.encode('utf-8')))
+
         print ("x_param: {}".format(param_base64))
 
         m2 = hashlib.md5()
-        self.config = str(self.API_KEY + cur_time + param_base64)
+        self.config = self.API_KEY + cur_time + param_base64
         m2.update(self.config.encode('utf-8'))
         check_sum = m2.hexdigest()
         print ("check_sum: {}".format(check_sum))
@@ -61,7 +65,6 @@ class speech_recognition_xfei():
         }
         print (self.header)
         
-    
     def audioCallback(self, msg):
         audio_index = str(msg.data)
         path_to_wav = self.audio_folder + "gpsr_" + audio_index + ".wav"
