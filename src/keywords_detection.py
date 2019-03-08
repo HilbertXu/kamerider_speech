@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-
+# -*- coding: utf-8 -*-
 '''
 Date: 2018/12/17
 Author: Xu Yucheng 
