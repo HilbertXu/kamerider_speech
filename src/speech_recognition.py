@@ -40,7 +40,7 @@ class speech_recognition_xfei():
         rospy.Subscriber(self.sub_audio_topic_name, Int8, self.audioCallback)
         self.pub_result = rospy.Publisher(self.pub_recognition_result_topic_name, String, queue_size=1)
     
-    def get_header(self, aue='raw', engineType='sms-en16k)'):
+    def get_header(self, aue='raw', engineType='sms-en16k'):
         cur_time = str(int(time.time()))
         param = "{\"aue\":\"" + aue + "\"" + ",\"engine_type\":\"" + engineType + "\"}"
         print ("param: {}".format(param))
@@ -76,6 +76,7 @@ class speech_recognition_xfei():
         
         result = requests.post(self.URL, headers=self.header, data=data)
         print (result.content.decode('utf-8'))
+
     
 if __name__ == '__main__':
     rospy.init_node('speech_recognition', anonymous=True)
