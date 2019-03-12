@@ -31,7 +31,7 @@ class get_audio():
         # Ros params
         self.start_record = False
         self.stop_record  = False
-        self.project_name = '/home/kamerider/catkin_ws/src/kamerider_speech/sounds/gpsr_record/gpsr'
+        self.project_name = '/home/nvidia/catkin_ws/src/kamerider_speech/sounds/gpsr_record/gpsr'
         self.count = 0
         self.sub_pocketsphinx_topic_name = None
         self.pub_record_end_topic_name   = None
@@ -53,7 +53,7 @@ class get_audio():
     def play_signale_sound(self):
         chunk = 1024
         # 打开 .wav 音频文件
-        f = wave.open('/home/kamerider/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav', 'rb')
+        f = wave.open('/home/nvidia/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav', 'rb')
         # 初始化pyaudio
         p = pyaudio.PyAudio()
         # 打开一个stream

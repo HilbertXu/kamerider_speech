@@ -11,7 +11,7 @@ import xml
 import xml.etree.ElementTree as et
 import time
 
-def read_gesture_file(path='/home/kamerider/catkin_ws/src/kamerider_speech/CommonFiles/Gestures.xml'):
+def read_gesture_file(path='/home/nvidia/catkin_ws/src/kamerider_speech/CommonFiles/Gestures.xml'):
     xml_file = et.parse(path)
     root = xml_file.getroot()
     gesture_xml = []  
@@ -20,7 +20,7 @@ def read_gesture_file(path='/home/kamerider/catkin_ws/src/kamerider_speech/Commo
         gesture_xml.append(ges.attrib['name'])
     return gesture_xml
 
-def read_location_xml(path='/home/kamerider/catkin_ws/src/kamerider_speech/CommonFiles/Locations.xml'):
+def read_location_xml(path='/home/nvidia/catkin_ws/src/kamerider_speech/CommonFiles/Locations.xml'):
     location_xml = {}    
     xml_file = et.parse(path)
     root = xml_file.getroot()
@@ -32,7 +32,7 @@ def read_location_xml(path='/home/kamerider/catkin_ws/src/kamerider_speech/Commo
             location_xml[room.attrib['name']].append(loc.attrib['name'])
     return location_xml
 
-def read_names_xml(path='/home/kamerider/catkin_ws/src/kamerider_speech/CommonFiles/Names.xml'):
+def read_names_xml(path='/home/nvidia/catkin_ws/src/kamerider_speech/CommonFiles/Names.xml'):
     name_xml = {}
     xml_file = et.parse(path)
     root = xml_file.getroot()
@@ -41,7 +41,7 @@ def read_names_xml(path='/home/kamerider/catkin_ws/src/kamerider_speech/CommonFi
         name_xml[name.text] = name.attrib['gender']
     return name_xml
 
-def read_object_xml(path='/home/kamerider/catkin_ws/src/kamerider_speech/CommonFiles/Objects.xml'):
+def read_object_xml(path='/home/nvidia/catkin_ws/src/kamerider_speech/CommonFiles/Objects.xml'):
     object_xml = {}
     xml_file = et.parse(path)
     root = xml_file.getroot()

@@ -29,8 +29,8 @@ class gpsr_speech_control(object):
         rospy.on_shutdown(self.cleanup)
         # Get parameters
         self.voice = rospy.get_param("~voice", "voice_cmu_us_clb_arctic_clunits")
-        self.question_start_signal = rospy.get_param("~question_start_signal", "/home/kamerider/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav")
-        self.cmd_files = rospy.get_param("~cmd_file", "/home/kamerider/catkin_ws/src/kamerider_speech/CommonFiles")
+        self.question_start_signal = rospy.get_param("~question_start_signal", "/home/nvidia/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav")
+        self.cmd_files = rospy.get_param("~cmd_file", "/home/nvidia/catkin_ws/src/kamerider_speech/CommonFiles")
 
         # Default infomations
         self.gestures, self.locations, self.names, self.objects = read_main()
