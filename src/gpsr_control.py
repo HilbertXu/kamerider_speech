@@ -44,6 +44,7 @@ class gpsr_speech_control(object):
         rospy.sleep(1)
         self.start_gpsr()
 
+
     def play_signale_sound(self):
         chunk = 1024
         # 打开 .wav 音频文件
@@ -79,6 +80,19 @@ class gpsr_speech_control(object):
         self.sh.say("I am ready for your question if you hear", self.voice)
         rospy.sleep(3.5)
         self.play_signale_sound()
+    
+    def xfeiCallback(self, msg):
+        """
+            此函数解析语音识别的结果，并转化成字符串列表的形式
+        """
+        string = str(msg.data)
+        punc = [",", "?", "!", "."]
+        if string[-1] in punc:
+            string = string[:-1]
+        output = []
+        for words in string.lstrip().split(","):
+            for word in words.split():
+                output.append(word)
     
     def cleanup(self):
 		rospy.loginfo("shuting down gpsr control node ....")
