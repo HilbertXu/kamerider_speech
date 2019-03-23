@@ -1,0 +1,2 @@
+string target_type
+string target_name

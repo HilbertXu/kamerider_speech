@@ -14,6 +14,7 @@ import pyaudio
 import wave
 from std_msgs.msg import Int8
 from std_msgs.msg import String
+from play_signal_sound import play_signal_sound
 
 class get_audio():
     def __init__(self):
@@ -49,34 +50,6 @@ class get_audio():
         rospy.Subscriber(self.sub_pocketsphinx_topic_name, String, self.pocketCallback)
         self.pub_record = rospy.Publisher(self.pub_record_end_topic_name, String, queue_size=1)
         self.pub_index  = rospy.Publisher(self.pub_record_index_topic_name, Int8, queue_size=1)
-    
-    def play_signale_sound(self):
-        chunk = 1024
-        # 打开 .wav 音频文件
-        f = wave.open('/home/kamerider/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav', 'rb')
-        # 初始化pyaudio
-        p = pyaudio.PyAudio()
-        # 打开一个stream
-        stream = p.open(
-            format = p.get_format_from_width(f.getsampwidth()),
-            channels = f.getnchannels(),
-            rate = f.getframerate(),
-            output = True
-        )
-        # 读取音频文件中的数据
-        data = f.readframes(chunk)
-
-        # 播放音频文件
-        while data != '':
-            stream.write(data)
-            data = f.readframes(chunk)
-        
-        # 终止stream
-        stream.stop_stream()
-        stream.close()
-        # 关闭pyaudio
-        p.terminate()
-
     def pocketCallback(self, msg):
         if msg.data.lower().strip() == 'jack':
             self.start_record = True
@@ -89,7 +62,7 @@ class get_audio():
     def get_audio(self):
         if self.start_record:
             self.setup_recorder()
-            self.play_signale_sound()
+            play_signal_sound()
             file_name = self.project_name + '_' + str(self.count) + '.wav'
             print ("[INFO] Start to record input audio and save to file: %s"%(file_name))
             stream = self.recorder.open(

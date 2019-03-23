@@ -47,12 +47,11 @@ def read_object_xml(path='/home/kamerider/catkin_ws/src/kamerider_speech/CommonF
     root = xml_file.getroot()
     categorys = root.getchildren()
     for category in categorys:
-        object_xml[category.attrib['name']] = dict()
         objects = category.getchildren()
         for obj in objects:
-            object_xml[category.attrib['name']][obj.attrib['name']] = dict()
-            object_xml[category.attrib['name']][obj.attrib['name']]['location'] = category.attrib['defaultLocation']
-            object_xml[category.attrib['name']][obj.attrib['name']]['room'] = category.attrib['room']
+            object_xml[obj.attrib['name']] = dict()
+            object_xml[obj.attrib['name']]['location'] = category.attrib['defaultLocation']
+            object_xml[obj.attrib['name']]['room'] = category.attrib['room']
     return object_xml
 
     
@@ -62,6 +61,10 @@ def main():
     locations = read_location_xml()
     names = read_names_xml()
     objects = read_object_xml()
+    # print (gestures)
+    # print (locations.keys())
+    # print (names.keys())
+    print (objects.keys())
 
     return gestures, locations, names, objects
 
