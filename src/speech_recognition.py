@@ -76,31 +76,6 @@ class speech_recognition_xfei():
         
         result = requests.post(self.URL, headers=self.header, data=data)
         print (result.content.decode('utf-8'))
-        result_dict = json.loads(result.content.decode('utf-8'))
-        string = result_dict["data"]
-        self.pub_result.publish(string)
-    
-
-    """
-        以下函数添加到gpsr控制节点的订阅器中，
-        在接受到识别节点的识别结果之后，
-        对识别结果进行解析
-    """
-    def parse_output(self, result):
-        result_dict = json.loads(result)
-        punc = [",", "?", "!", "."]
-        string = str(result_dict["data"])
-        if string[-1] in punc:
-            string = string[:-1]
-
-        output = []
-        for words in string.lstrip().split(","):
-            for word in words.split():
-                output.append(word)
-        print (output)
-
-
-
     
 if __name__ == '__main__':
     rospy.init_node('speech_recognition', anonymous=True)
