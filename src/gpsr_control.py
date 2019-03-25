@@ -21,11 +21,15 @@ import time
 import wave
 import datetime
 import pyaudio
-from kamerider_speech.msg import find_target
+from kamerider_speech.msg import mission
 from sound_play.libsoundplay import SoundClient
 from read_xml_files import main as read_main
 from play_signal_sound import play_signal_sound
 
+# 定义表示任务状态的变量
+UNSTART = 0
+PROCESS = 1
+FINISH  = 2
 
 class gpsr_speech_control(object):
     """Class to read the recognition output of pocketsphinx"""
@@ -36,7 +40,7 @@ class gpsr_speech_control(object):
         # Type of task
         self.task_type = ['person', 'object', 'object2person', 'Q&A']
         # State of task
-        self.task_state = ['None' ,'process', 'finish']
+        self.task_state = [UNSTART, PROCESS, FINISH]
         # Predefined missions
         self.missions = ['put', 'bring', 'take', 'guide', 'find', 'answer', 'introduce',
                          'grasp', 'get', 'give', 'tell', 'navigate', 'look', 'deliver']
@@ -59,11 +63,11 @@ class gpsr_speech_control(object):
         self.target_object = None
         self.target_mission = None
         # Mission keywords
-        self._room = self.task_state[0]
-        self._location = self.task_state[0]
-        self._person = self.task_state[0]
-        self._object = self.task_state[0]
-        self._mission = self.task_state[0]
+        self._room = UNSTART
+        self._location = UNSTART
+        self._person = UNSTART
+        self._object = UNSTART
+        self._mission = UNSTART
         
         self.init_params()
         self.get_params()
@@ -76,11 +80,11 @@ class gpsr_speech_control(object):
         self.target_object = None
         self.target_mission = None
         # Mission state
-        self._room = self.task_state[0]
-        self._location = self.task_state[0]
-        self._person = self.task_state[0]
-        self._object = self.task_state[0]
-        self._mission = self.task_state[0]
+        self._room = UNSTART
+        self._location = UNSTART
+        self._person = UNSTART
+        self._object = UNSTART
+        self._mission = UNSTART
 
     def get_params(self):
         # Initialize sound client
@@ -127,17 +131,18 @@ class gpsr_speech_control(object):
         play_signal_sound()
     
     def armCallback(self, msg):
-        return 0
+        if msg.data == "object_target_grasped":
+            self._object = FINISH
     
     def navCallback(self, msg):
         if msg.data == "room_target_arrived":
-            self._room = self.task_state[2]
+            self._room = FINISH
         if msg.data == "loc_target_arrived":
-            self._location = self.task_state[2]
+            self._location = FINISH
 
     def imageCallback(self, msg):
-        if msg.data == "person_found":
-            self._person = self.task_state[2]
+        if msg.data == "person_target_found":
+            self._person = FINISH
 
     def xfeiCallback(self, msg):
         string = msg.data
@@ -152,29 +157,38 @@ class gpsr_speech_control(object):
         self.parse_output(output)
 
     
-    # 定义完成任务的函数，首先是移动到指定房间
+    # 定义完成任务的函数，首先是移动到指定房间, 然后指定地点，然后找到指定人或者物体
     def move_to_room(self):
-        msg = String()
-        msg.data = str(self.target_room)
-        if self._room == self.task_state[0]:
+        msg = mission()
+        msg.mission_type = 'room'
+        msg.mission_name = str(self.target_room)
+        if self._room == UNSTART:
             self.publishr_message(self.nav_pub, msg)
-            self._room = self.task_state[1]
+            self._room = PROCESS
+    
+    def move_to_location(self):
+        msg = mission()
+        msg.mission_type = 'location'
+        msg.mission_name = str(self.target_location)
+        if self._location == UNSTART:
+            self.publishr_message(self.nav_pub, msg)
+            self._location = PROCESS
 
     def find_person(self):
-        msg = find_target()
+        msg = mission()
         msg.target_type = 'person'
-        msg.target_name = str(self.target_person)
-        if self._person == self.task_state[0]:
+        msg.mission_name = str(self.target_person)
+        if self._person == UNSTART:
             self.publishr_message(self.image_pub, msg)
-            self._person = self.task_state[1]
+            self._person = PROCESS
     
     def find_object(self):
-        msg = find_target()
+        msg = mission()
         msg.target_type = 'object'
-        msg.target_name = str(self.target_object)
-        if self._object == self.task_state[0]:
+        msg.mission_name = str(self.target_object)
+        if self._object == UNSTART:
             self.publishr_message(self.image_pub, msg)
-            self._object = self.task_state[1]
+            self._object = PROCESS
     
     def answer_question(self, output):
         if "language" in output or "program" in output or "programming" in output:
@@ -356,11 +370,11 @@ class gpsr_speech_control(object):
             # 一般会是要求机器人前往某个房间找到某个人，然后回答问题
             # 则先前往指定房间，在到达房间之后回答问题
             while(1):
-                if self._room == self.task_state[0]:
+                if self._room == UNSTART:
                     self.move_to_room()
-                if self._room == self.task_state[2] and self._person == self.task_state[0]:
+                if self._room == FINISH and self._person == UNSTART:
                     self.find_person()
-                if self._person == self.task_state[2]:
+                if self._person == FINISH:
                     temp_str = "I have found " + str(self.target_person)
                     self.sh.say(temp_str, self.voice)
                     rospy.sleep(3)
@@ -372,7 +386,23 @@ class gpsr_speech_control(object):
                     self.sh.say("I am ready for your question if you hear", self.voice)
                     rospy.sleep(3.5)
                     play_signal_sound()
-                    self.init_params()
+                self.init_params()
+        
+        if self.target_room != None and self.target_object! = None:
+            # 若同时听到房间信息和物品信息
+            # 则判断是要去某个房间找到或者抓取某个物体
+            # 则先前往指定房间，然后找到指定物体
+            while(1):
+                if self._room == UNSTART:
+                    self.move_to_room()
+                if self._room == FINISH and self._location == UNSTART:
+                    self.move_to_location()
+                if self._location == FINISH and self._object == UNSTART:
+                    self.find_object()
+                self.init_params()
+            
+        
+        
  
 
     def mission_excute(self):
