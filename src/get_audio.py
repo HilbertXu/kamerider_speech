@@ -28,7 +28,7 @@ class get_audio():
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.RATE = 11025
-        self.RECORD_SECONDS = 10
+        self.RECORD_SECONDS = 7
         # Ros params
         self.start_record = False
         self.stop_record  = False
@@ -56,7 +56,7 @@ class get_audio():
             self.stop_record  = False
             self.get_audio()
         
-        if msg.data.lower().strip() == 'ok':
+        if msg.data.lower().strip() == 'ok' or msg.data.lower().strip() == 'okay':
             self.stop_record = True
         
     def get_audio(self):
@@ -91,7 +91,7 @@ class get_audio():
             wf.setframerate(self.RATE)
             wf.writeframes(b''.join(frames))
             wf.close()
-
+        
             self.pub_index.publish(self.count)
             self.start_record = False
             self.count += 1
