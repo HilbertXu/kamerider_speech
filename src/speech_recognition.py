@@ -29,11 +29,28 @@ class speech_recognition_xfei():
         self.sub_audio_topic_name = None
         self.pub_recognition_result_topic_name = None
         self.pub_result = None
+        self.is_restart = None
         self.get_params()
         self.get_header()
+        # 由参数服务器中的参数判断当前是否是重启节点
+        if self.is_restart != False:
+            self.restart()
+        else:
+            os.chdir(self.audio_folder)
+            os.system("rm -rf *")
+    
+    def restart(self):
+        # 当讯飞因为使用时间过长而Timeout之后，通过rosnode kill和launch文件中的respawn选项重启这个节点
+        # 重启这个节点之后需要读取刚刚没有识别出来的语音文件再次识别
+        print ("Node restart DETECTED!")
+        file_num = len(os.listdir(self.audio_folder))
+        path_to_wav = self.audio_folder + 'gpsr_' + str(file_num-1) + '.wav'
+        self.get_wav(path_to_wav)
+
     
     def get_params(self):
         # ROS params
+        self.is_restart = rospy.get_param("/is_restart", "")
         self.sub_audio_topic_name = rospy.get_param("sub_audio_topic_name", "/audio_index")
         self.pub_recognition_result_topic_name = rospy.get_param("pub_recognition_result_topic_name", "/xfei_output")
         # ROS subscriber & publisher
@@ -76,9 +93,16 @@ class speech_recognition_xfei():
         
         result = requests.post(self.URL, headers=self.header, data=data)
         print (result.content.decode('utf-8'))
-    
+        result_dict = json.loads(result.content.decode('utf-8'))
+        if str(result_dict["code"]) == str(10114):
+            rospy.set_param("/is_restart", "true")
+            os.system("rosnode kill /speech_recognition")
+        else:
+            string = result_dict["data"]
+            self.pub_result.publish(string)
+
 if __name__ == '__main__':
-    rospy.init_node('speech_recognition', anonymous=True)
+    rospy.init_node('speech_recognition')
     xfei = speech_recognition_xfei()
     rospy.spin()
 
