@@ -1,7 +1,7 @@
 <!-- 启动所有语音节点的launch file-->
 <launch>
-	<arg name="dict" default="/home/kamerider/catkin_ws/src/pocketsphinx/GPSR/6534.dic" />
-	<arg name="kws"  default="/home/kamerider/catkin_ws/src/pocketsphinx/GPSR/gpsr.kwlist" />
+	<arg name="dict" default="/home/nvidia/catkin_ws/src/pocketsphinx/GPSR/6534.dic" />
+	<arg name="kws"  default="/home/nvidia/catkin_ws/src/pocketsphinx/GPSR/gpsr.kwlist" />
 	<param name="is_restart" value="false"/>
 
 	<include file="$(find pocketsphinx)/launch/kws.launch">

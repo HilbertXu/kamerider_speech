@@ -44,6 +44,8 @@ class gpsr_speech_control(object):
         # Predefined missions
         self.missions = ['put', 'bring', 'take', 'guide', 'find', 'answer', 'introduce',
                          'grasp', 'get', 'give', 'tell', 'navigate', 'look', 'deliver']
+	self.months = ['january', 'february', 'march', 'april', 'may', 'june', 'july',
+		      'august', 'september', 'october', 'november', 'december']
         # Define parameters
         self.voice = None
         self.question_start_signal = None
@@ -56,6 +58,7 @@ class gpsr_speech_control(object):
         self.sub_nav_back_topic_name = None
         self.sub_image_back_topic_name = None
         self.sub_arm_back_topic_name = None
+	self.sub_xfei_back_topic_name=None
         # Mission keywords
         self.target_room = None
         self.target_location = None
@@ -94,8 +97,8 @@ class gpsr_speech_control(object):
         rospy.sleep(1)
 
         # Get parameters
-        self.voice = rospy.get_param("~voice", "voice_us2_mbrola")
-        self.cmd_files = rospy.get_param("~cmd_file", "/home/kamerider/catkin_ws/src/kamerider_speech/CommonFiles")
+        self.voice = rospy.get_param("~voice", "voice_cmu_us_bdl_arctic_clunits")
+        self.cmd_files = rospy.get_param("~cmd_file", "/home/nvidia/catkin_ws/src/kamerider_speech/CommonFiles")
 
         self.pub_to_arm_topic_name   = rospy.get_param("pub_to_arm_topic_name"  , "/speech_to_arm")
         self.pub_to_nav_topic_name   = rospy.get_param("pub_to_nav_topic_name"  , "/speech_to_nav")
@@ -104,10 +107,12 @@ class gpsr_speech_control(object):
         self.sub_arm_back_topic_name   = rospy.get_param("sub_arm_back_topic_name"  , "/arm_to_speech")
         self.sub_nav_back_topic_name   = rospy.get_param("sub_nav_back_topic_name"  , "/nav_to_speech")
         self.sub_image_back_topic_name = rospy.get_param("sub_image_back_topic_name", "/image_to_speech")
+	self.sub_xfei_back_topic_name  = rospy.get_param("sub_xfei_back_topic_name" , "/xfei_output")
 
         rospy.Subscriber(self.sub_arm_back_topic_name, String, self.armCallback)
         rospy.Subscriber(self.sub_nav_back_topic_name, String, self.navCallback)
         rospy.Subscriber(self.sub_image_back_topic_name, String, self.imageCallback)
+	rospy.Subscriber(self.sub_xfei_back_topic_name, String, self.xfeiCallback)	
 
         self.arm_pub   = rospy.Publisher(self.pub_to_arm_topic_name, String, queue_size=1)
         self.nav_pub   = rospy.Publisher(self.pub_to_nav_topic_name, String, queue_size=1)
@@ -122,10 +127,11 @@ class gpsr_speech_control(object):
     
     def start_gpsr(self):
         # 播放初始化的音频，并提醒操作者如何使用语音操作Jack
+	rospy.sleep(1)
         self.sh.say("Hello my name is Jack", self.voice)
         rospy.sleep(3)
         self.sh.say("Please say Jack to wake me up before each question", self.voice)
-        rospy.sleep(4)
+        rospy.sleep(5)
         self.sh.say("I am ready for your command if you hear", self.voice)
         rospy.sleep(3.5)
         play_signal_sound()
@@ -153,8 +159,9 @@ class gpsr_speech_control(object):
         for part in string.lstrip().split(","):
             for word in part.split():
                 output.append(word)
-        print (output)
-        self.parse_output(output)
+	output = [item.lower() for item in output]
+	print (output)
+        self.answer_question(output)
 
     
     # 定义完成任务的函数，首先是移动到指定房间, 然后指定地点，然后找到指定人或者物体
@@ -191,7 +198,8 @@ class gpsr_speech_control(object):
             self._object = PROCESS
     
     def answer_question(self, output):
-        if "language" in output or "program" in output or "programming" in output:
+        if "program" in output or "programming" in output:
+	    print ("Detected program question")
             if "who" in output:
                 self.sh.say("I heard the question", self.voice)
                 rospy.sleep(3)
@@ -201,8 +209,8 @@ class gpsr_speech_control(object):
                 rospy.sleep(6)
                 self.sh.say("Okay i am ready for your next question", self.voice)
                 rospy.sleep(4)
-            if "When" in output:
-                if "C" in output:
+            if "when" in output:
+                if "c" in output:
                     self.sh.say("I heard the question", self.voice)
                     rospy.sleep(3)
                     self.sh.say("When was the C programming language invented", self.voice)
@@ -211,7 +219,7 @@ class gpsr_speech_control(object):
                     rospy.sleep(7)
                     self.sh.say("Okay i am ready for your next question", self.voice)
                     rospy.sleep(4)
-                if "B" in output or "big" in output:
+                if "b" in output or "big" in output:
                     self.sh.say("I heard the question", self.voice)
                     rospy.sleep(3)
                     self.sh.say("When was the B programming language invented", self.voice)
@@ -229,7 +237,7 @@ class gpsr_speech_control(object):
             rospy.sleep(6)
             self.sh.say("Okay i am ready for your next question", self.voice)
             rospy.sleep(4)
-        if "compile" in output or "compiler" in output:
+        if "compile" in output or "compiler" in output or "first" in output:
             self.sh.say("I heard the question", self.voice)
             rospy.sleep(3)
             self.sh.say("Who invented the first compiler", self.voice)
@@ -238,7 +246,7 @@ class gpsr_speech_control(object):
             rospy.sleep(7)
             self.sh.say("Okay i am ready for your next question", self.voice)
             rospy.sleep(4)
-        if "platform" in output:
+        if "platform" in output or "used" in output:
             if "open" in output:
                 self.sh.say("I heard the question", self.voice)
                 rospy.sleep(3)
@@ -277,26 +285,37 @@ class gpsr_speech_control(object):
             rospy.sleep(4)
         if "time" in output:
             curr_time = str(time.strftime('%H:%M:%S'))
+	    print (curr_time)
             self.sh.say("I heard the question", self.voice)
             rospy.sleep(3)
             self.sh.say("What time is it", self.voice)
             rospy.sleep(3)
             self.sh.say("The answer is "+curr_time, self.voice)
-            rospy.sleep(9)
+            rospy.sleep(7)
             self.sh.say("Okay i am ready for your next question", self.voice)
             rospy.sleep(4)
         if "day" in output or "today" in output:
             today = datetime.date.today()
-            today.strftime("%Y-%m-%d")
+            today = today.strftime("%Y-%m-%d")
+	    today = today.split("-")
+	    year = today[0]
+	    month = int(today[1])-1
+	    month = self.months[month]
             self.sh.say("I heard the question", self.voice)
             rospy.sleep(3)
             self.sh.say("What day is today", self.voice)
             rospy.sleep(3)
-            self.sh.say("The answer is "+today, self.voice)
-            rospy.sleep(9)
+            self.sh.say("The answer is ", self.voice)
+            rospy.sleep(2)
+	    self.sh.say("year "+year, self.voice)
+	    rospy.sleep(3)
+	    self.sh.say(month, self.voice)
+            rospy.sleep(2)
+	    self.sh.say(today[2], self.voice)
+            rospy.sleep(2)
             self.sh.say("Okay i am ready for your next question", self.voice)
             rospy.sleep(4)
-        if "dream" in output:
+        if "dream" in output or "dreams" in output:
             self.sh.say("I heard the question", self.voice)
             rospy.sleep(3)
             self.sh.say("Do you have dreams", self.voice)
@@ -305,7 +324,7 @@ class gpsr_speech_control(object):
             rospy.sleep(5)
             self.sh.say("Okay i am ready for your next question", self.voice)
             rospy.sleep(4)
-        if "city" in output and "next" in output:
+        if "city" in output or "next" in output:
             self.sh.say("I heard the question", self.voice)
             rospy.sleep(3)
             self.sh.say("In which city will next year's RoboCup be hosted", self.voice)
@@ -314,7 +333,7 @@ class gpsr_speech_control(object):
             rospy.sleep(7)
             self.sh.say("Okay i am ready for your next question", self.voice)
             rospy.sleep(4)
-        if "canada" in output:
+        if "canada" in output or "Canda" in output:
             if "origin" in output:
                 self.sh.say("I heard the question", self.voice)
                 rospy.sleep(3)
@@ -345,6 +364,7 @@ class gpsr_speech_control(object):
 
     def parse_output(self, output):
         # 首先收集输出中的各类关键词
+	rospy.loginfo("Parsing output")
         for room in self.locations.keys():
             if room.lower() in output:
                 self.target_room = room
@@ -358,6 +378,10 @@ class gpsr_speech_control(object):
         for mission in self.missions:
             if mission in output:
                 self.target_mission = mission
+	rospy.loginfo("Detected following keywords")
+	print ("Target room: " + self.target_room)
+	print ("Target location: " + self.target_location)
+	
         
         # 根据接受到的关键词执行任务
         if self.target_room == None and self.target_object == None and self.target_mission == None:
@@ -388,7 +412,7 @@ class gpsr_speech_control(object):
                     play_signal_sound()
                 self.init_params()
         
-        if self.target_room != None and self.target_object! = None:
+        if self.target_room != None and self.target_object != None:
             # 若同时听到房间信息和物品信息
             # 则判断是要去某个房间找到或者抓取某个物体
             # 则先前往指定房间，然后找到指定物体
@@ -411,7 +435,7 @@ class gpsr_speech_control(object):
         # 首先判断是不是要求回答问题
 
         # 然后根据关键词对机器人进行相应的操作
-
+	return 0
         
 
     def cleanup(self):

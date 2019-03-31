@@ -22,7 +22,7 @@ class speech_recognition_xfei():
         self.URL = "http://api.xfyun.cn/v1/service/v1/iat"
         self.APPID = "5c8102a7"
         self.API_KEY = "cd41a5bfe6b542e1e4fc8edac15a3c88"
-        self.audio_folder = "/home/kamerider/catkin_ws/src/kamerider_speech/sounds/gpsr_record/"
+        self.audio_folder = "/home/nvidia/catkin_ws/src/kamerider_speech/sounds/gpsr_record/"
         self.header = None
         self.config = None
 

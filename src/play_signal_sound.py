@@ -7,7 +7,7 @@ import os
 import sys
 
 def play_signal_sound():
-    question_start_signal = "/home/kamerider/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav"
+    question_start_signal = "/home/nvidia/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav"
     chunk = 1024
     # 打开 .wav 音频文件
     f = wave.open(question_start_signal, 'rb')

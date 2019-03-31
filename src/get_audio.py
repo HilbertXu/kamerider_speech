@@ -32,7 +32,7 @@ class get_audio():
         # Ros params
         self.start_record = False
         self.stop_record  = False
-        self.project_name = '/home/kamerider/catkin_ws/src/kamerider_speech/sounds/gpsr_record/gpsr'
+        self.project_name = '/home/nvidia/catkin_ws/src/kamerider_speech/sounds/gpsr_record/gpsr'
         self.count = 0
         self.sub_pocketsphinx_topic_name = None
         self.pub_record_end_topic_name   = None

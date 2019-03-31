@@ -1,0 +1,6 @@
+<launch>
+	<param name="test"  type="bool" value="false" />
+	<group if="$(find test)">
+		<include file="$(find kamerider_speech)/launch/speech_all.launch" />
+	</group>
+</launch>
