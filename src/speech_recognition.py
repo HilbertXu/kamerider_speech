@@ -36,6 +36,8 @@ class speech_recognition_xfei():
         if self.is_restart != False:
             self.restart()
         else:
+            if os.path.isdir(self.audio_folder) == False:
+                os.makedirs(self.audio_folder)
             os.chdir(self.audio_folder)
             os.system("rm -rf *")
     
@@ -52,7 +54,7 @@ class speech_recognition_xfei():
         # ROS params
         self.is_restart = rospy.get_param("/is_restart", "")
         self.sub_audio_topic_name = rospy.get_param("sub_audio_topic_name", "/audio_index")
-        self.pub_recognition_result_topic_name = rospy.get_param("pub_recognition_result_topic_name", "/xfei_output")
+        self.pub_recognition_result_topic_name = rospy.get_param("pub_recognition_result_topic_name", "/xfei_to_speech")
         # ROS subscriber & publisher
         rospy.Subscriber(self.sub_audio_topic_name, Int8, self.audioCallback)
         self.pub_result = rospy.Publisher(self.pub_recognition_result_topic_name, String, queue_size=1)
@@ -93,7 +95,7 @@ class speech_recognition_xfei():
         
         result = requests.post(self.URL, headers=self.header, data=data)
         print (result.content.decode('utf-8'))
-        result_dict = json.loads(result.content.decode('utf-8'))
+        w = json.loads(result.content.decode('utf-8'))
         if str(result_dict["code"]) == str(10114):
             rospy.set_param("/is_restart", "true")
             os.system("rosnode kill /speech_recognition")

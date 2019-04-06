@@ -94,7 +94,7 @@ class gpsr_speech_control(object):
         rospy.sleep(1)
 
         # Get parameters
-        self.voice = rospy.get_param("~voice", "voice_us2_mbrola")
+        self.voice = rospy.get_param("~voice", "voice_kal_diphone")
         self.cmd_files = rospy.get_param("~cmd_file", "/home/kamerider/catkin_ws/src/kamerider_speech/CommonFiles")
 
         self.pub_to_arm_topic_name   = rospy.get_param("pub_to_arm_topic_name"  , "/speech_to_arm")
@@ -388,7 +388,7 @@ class gpsr_speech_control(object):
                     play_signal_sound()
                 self.init_params()
         
-        if self.target_room != None and self.target_object! = None:
+        if self.target_room != None and self.target_object != None:
             # 若同时听到房间信息和物品信息
             # 则判断是要去某个房间找到或者抓取某个物体
             # 则先前往指定房间，然后找到指定物体
@@ -400,18 +400,6 @@ class gpsr_speech_control(object):
                 if self._location == FINISH and self._object == UNSTART:
                     self.find_object()
                 self.init_params()
-            
-        
-        
- 
-
-    def mission_excute(self):
-        # 首先控制机器人移动到指定的房间
-        
-        # 首先判断是不是要求回答问题
-
-        # 然后根据关键词对机器人进行相应的操作
-
         
 
     def cleanup(self):
