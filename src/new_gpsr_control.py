@@ -19,6 +19,7 @@ from kamerider_speech.msg import mission
 from sound_play.libsoundplay import SoundClient
 from read_xml_files import main as read_main
 from play_signal_sound import play_signal_sound
+from answer_question import answer_question
 
 # 定义表示任务状态的变量
 UNSTART = 0
@@ -49,6 +50,7 @@ class gpsr_speech_control(object):
         self.object = self.dict_to_list(self.objects)
         self.object_adjust= ['tuna','M','pair','pitch','picture','piece','page','pair','pairs']
         self.object = self.object +self.object_adjust
+
         self.action=['bring', 'take','took','put','give','gave','deliver','delivered','place','pick']
         self.people=['person','people','girl','boy','male','female']
         self.name=['Alex','Charlie','Elizabeth','Francis','Jennifer','Linda','Mary','Patricia','Robin','Skyler','Alex','Charlie','Francis','James','John','Michael','Robert', 'Robin','Skyler','William']
@@ -119,6 +121,7 @@ class gpsr_speech_control(object):
         self._person = UNSTART
         self._object = UNSTART
         self._mission = UNSTART
+
     #从launch文件中获取topic_name,声明Publisher和Subscriber,播放初始音频
     def get_params(self):
         # Initialize sound client
@@ -154,12 +157,61 @@ class gpsr_speech_control(object):
 
         # Start gpsr task
         self.start_gpsr()
+    
+    def publishr_message(self, pub, msg):
+        pub.publish(msg)
+
     # 播放初始化的音频,并提醒操作者如何使用语音操作Jack
     def start_gpsr(self):
         self.sh.say("Hello my name is Jack", self.voice)
         self.sh.say("Please say Jack to wake me up before each question", self.voice)
         self.sh.say("I am ready for your command if you hear", self.voice)
         play_signal_sound()
+
+    # 定义完成任务的函数
+    # 我暂时使用函数来实现对每一个模块的控制
+    # 如何使用import的问题，等我下午回来再一起讨论
+    # 导航模块我已经写好了接口，能够直接接受这边的消息然后导航到room或者location
+    # 图像模块问题比较复杂，还剩下一个pose detect没做
+    # 机械臂...那一套东西直接调用就行，然后真的看缘分吧
+    # 另外我们得记得去买一下去年世界赛给出来的物品，然后做一下不同环境下的训练集了，晚上去华联找找吧
+    # 这几个函数的调用都是直接调用类内函数，然后参数给一个目标的名称就行，记得加上self哦
+    # 回答问题的接口我也做好了，在kamerider_speech/src里面有一个answer_question.py文件里面写了注释
+    # 调用方法是直接answer_question(self.sh, self.voice, output)
+    # 晚安
+    def move_to_room(self, room_name):
+        msg = mission()
+        msg.mission_type = 'room'
+        msg.mission_name = str(room_name)
+        if self._room == UNSTART:
+            self.publishr_message(self.nav_pub, msg)
+            self._room = PROCESS
+
+    def move_to_location(self, location_name):
+        msg = mission()
+        msg.mission_type = 'location'
+        msg.mission_name = str(location_name)
+        if self._location == UNSTART:
+            self.publishr_message(self.nav_pub, msg)
+            self._location = PROCESS
+
+    def find_person(self, person_name):
+        msg = mission()
+        msg.mission_type = 'person'
+        msg.mission_name = str(person_name)
+        if self._person == UNSTART:
+            self.publishr_message(self.image_pub, msg)
+            self._person = PROCESS
+
+    def find_object(self, object_name):
+        # @TODO
+        # 需要根据需求把mission修改为"grasp", "find"
+        msg = mission()
+        msg.mission_type = 'object'
+        msg.mission_name = str(object_name)
+        if self._object == UNSTART:
+            self.publishr_message(self.image_pub, msg)
+            self._object = PROCESS
 
     def armCallback(self, msg):
         if msg.data == "object_target_grasped":
@@ -186,6 +238,9 @@ class gpsr_speech_control(object):
         output = []
         for part in string.lstrip().split(","):
             for word in part.split():
+                for symbol in symbols:
+                    if symbol in word:
+                        word = word[:-1] #去除了可能出现的句子中间的标点符号
                 output.append(word)
         output = [item.lower() for item in output]
         print (output)
@@ -228,6 +283,7 @@ class gpsr_speech_control(object):
 
         
         #根据上面分类的情况,将问题分成5类
+        # ["manipulation", "navigation", "people", "object", "Q&A"]
         self.target_location = self.target_location + self.target_room
         if self.target_action  and self.target_object:
             #manipulation
@@ -310,6 +366,8 @@ class gpsr_speech_control(object):
                     else:
                         self.task_type = "Q&A"
                         print("task type is {}".format(self.task_type))
+                        # Uncomment this to answer questions
+                        # answer_question(self.sh, self.voice, output)
 if __name__ == '__main__':
     rospy.init_node("gpsr_speech_control", anonymous=True)
     ctrl = gpsr_speech_control()
