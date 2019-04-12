@@ -35,6 +35,11 @@ class gpsr_speech_control(object):
     """Class to read the recognition output of pocketsphinx"""
     def __init__(self):
         rospy.on_shutdown(self.cleanup)
+        # Get parameters
+        self.voice = rospy.get_param("~voice", "voice_cmu_us_bdl_arctic_clunits")
+        self.question_start_signal = rospy.get_param("~question_start_signal", "/home/nvidia/catkin_ws/src/kamerider_speech/sounds/question_start_signal.wav")
+        self.cmd_files = rospy.get_param("~cmd_file", "/home/nvidia/catkin_ws/src/kamerider_speech/CommonFiles")
+
         # Default infomations
         self.gestures, self.locations, self.names, self.objects = read_main()
         # Type of task
@@ -44,7 +49,7 @@ class gpsr_speech_control(object):
         # Predefined missions
         self.missions = ['put', 'bring', 'take', 'guide', 'find', 'answer', 'introduce',
                          'grasp', 'get', 'give', 'tell', 'navigate', 'look', 'deliver']
-	self.months = ['january', 'february', 'march', 'april', 'may', 'june', 'july',
+	    self.months = ['january', 'february', 'march', 'april', 'may', 'june', 'july',
 		      'august', 'september', 'october', 'november', 'december']
         # Define parameters
         self.voice = None
@@ -58,7 +63,7 @@ class gpsr_speech_control(object):
         self.sub_nav_back_topic_name = None
         self.sub_image_back_topic_name = None
         self.sub_arm_back_topic_name = None
-	self.sub_xfei_back_topic_name=None
+        self.sub_xfei_back_topic_name=None
         # Mission keywords
         self.target_room = None
         self.target_location = None
@@ -107,12 +112,12 @@ class gpsr_speech_control(object):
         self.sub_arm_back_topic_name   = rospy.get_param("sub_arm_back_topic_name"  , "/arm_to_speech")
         self.sub_nav_back_topic_name   = rospy.get_param("sub_nav_back_topic_name"  , "/nav_to_speech")
         self.sub_image_back_topic_name = rospy.get_param("sub_image_back_topic_name", "/image_to_speech")
-	self.sub_xfei_back_topic_name  = rospy.get_param("sub_xfei_back_topic_name" , "/xfei_output")
+	    self.sub_xfei_back_topic_name  = rospy.get_param("sub_xfei_back_topic_name" , "/xfei_output")
 
         rospy.Subscriber(self.sub_arm_back_topic_name, String, self.armCallback)
         rospy.Subscriber(self.sub_nav_back_topic_name, String, self.navCallback)
         rospy.Subscriber(self.sub_image_back_topic_name, String, self.imageCallback)
-	rospy.Subscriber(self.sub_xfei_back_topic_name, String, self.xfeiCallback)	
+	    rospy.Subscriber(self.sub_xfei_back_topic_name, String, self.xfeiCallback)	
 
         self.arm_pub   = rospy.Publisher(self.pub_to_arm_topic_name, String, queue_size=1)
         self.nav_pub   = rospy.Publisher(self.pub_to_nav_topic_name, String, queue_size=1)

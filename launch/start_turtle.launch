@@ -21,16 +21,16 @@
   <include unless="$(eval arg('battery') == 'None')" file="$(find turtlebot_bringup)/launch/includes/netbook.launch.xml">
     <arg name="battery" value="$(arg battery)" />
   </include>
-	<!-- 启动kinect -->
-	<include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
-	</include>
-	<!-- 启动astra -->
-	<include file="$(find astra_launch)/launch/astra.launch">
-	</include>
-	<!-- 唤醒机械臂 -->
-	<include file="$(find turtlebot_arm_bringup)/launch/myarm.launch">
-	</include>
 
+  <!-- 设置摄像头参数 -->
+  <include file="$(find turtlebot_bringup)launch/3dsensor.launch">
+    <arg name="rgb_processing" value="false" />
+    <arg name="depth_registration" value="false" />
+    <arg name="depth_processing" value="false" />
+    <arg name="scan_topic" value="/scan" />
+    <arg name="camera" value="camera" />
+  </include>
 
-
+  <include file="$(find astra_launch)/launch/astra.launch" >
+  </include>
 </launch>

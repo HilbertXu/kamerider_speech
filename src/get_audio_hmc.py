@@ -43,7 +43,7 @@ class get_audio():
         self.recorder = pyaudio.PyAudio()
     
     def get_params(self):
-        self.sub_pocketsphinx_topic_name  = rospy.get_param("sub_pocketsphinx_topic_name", "/kws_data")
+        self.sub_pocketsphinx_topic_name  = rospy.get_param("sub_pocketsphinx_topic_name", "/lm_data")
         self.pub_record_end_topic_name    = rospy.get_param("pub_record_end_topic_name",   "/audio_record")
         self.pub_record_index_topic_name  = rospy.get_param("pub_record_index_topic_name", "/audio_index")
         
@@ -81,13 +81,10 @@ class get_audio():
 
     def pocketCallback(self, msg):
         if rospy.get_param("wait_for_command"):
-            if msg.data.lower().strip() == 'jack':
+            if "jack" in msg.data.lower():
                 self.start_record = True
                 self.stop_record  = False
                 self.get_audio()
-            
-            if msg.data.lower().strip() == 'ok' or msg.data.lower().strip() == 'okay':
-                self.stop_record = True
         
     def get_audio(self):
         if self.start_record:
