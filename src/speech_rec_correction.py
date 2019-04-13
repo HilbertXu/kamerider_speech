@@ -26,7 +26,9 @@ def speech_rec_correction(rec_result):
         rec_result[rec_result.index('tower')] = 'towel rail'
     if 'towel' in rec_result:
         rec_result[rec_result.index('towel')] = 'towel rail'
-#correction for room
+    if 'living' in rec_result:
+        rec_result[rec_result.index('living')] = 'living room'
+#correction for obj
     if 'tuna' in rec_result:
         rec_result[rec_result.index('tuna')] = 'tuna fish'
     if 'M' in rec_result:
@@ -45,8 +47,17 @@ def speech_rec_correction(rec_result):
 #correction for navi
     if 'photo' in rec_result:
         rec_result[rec_result.index('photo')] = 'follow'
+    if 'raising' in rec_result or 'raised' in rec_result:
+        if 'left' in rec_result:
+            rec_result[rec_result.index('left')]='raising left'
+        if 'right' in rec_result:
+            rec_result[rec_result.index('right')]='raising right'
+    if 'pointing' in rec_result or 'pointed' in rec_result:
+        if 'left' in rec_result:
+            rec_result[rec_result.index('left')]='raising left'
+        if 'right' in rec_result:
+            rec_result[rec_result.index('right')]='raising right'
 
-        
 
         
 

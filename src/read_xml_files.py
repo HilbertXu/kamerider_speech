@@ -64,7 +64,6 @@ def main():
     # print (gestures)
     # print (locations.keys())
     # print (names.keys())
-    print (objects.keys())
 
     return gestures, locations, names, objects
 

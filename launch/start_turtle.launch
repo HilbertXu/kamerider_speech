@@ -24,9 +24,10 @@
 
   <!-- 设置摄像头参数 -->
   <include file="$(find turtlebot_bringup)launch/3dsensor.launch">
-    <arg name="rgb_processing" value="false" />
+    <arg name="rgb_processing" value="true" />
+    <arg name="depth_processing"     value="true"/>
     <arg name="depth_registration" value="false" />
-    <arg name="depth_processing" value="false" />
+    <arg name="depth_registered_processing"     value="false"/>
     <arg name="scan_topic" value="/scan" />
     <arg name="camera" value="camera" />
   </include>
