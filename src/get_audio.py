@@ -28,7 +28,7 @@ class get_audio():
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.RATE = 11025
-        self.RECORD_SECONDS = 7
+        self.RECORD_SECONDS = 11
         # Ros params
         self.start_record = False
         self.stop_record  = False

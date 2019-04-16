@@ -43,22 +43,27 @@ def speech_rec_correction(rec_result):
         rec_result[rec_result.index('picture')] = 'peach'
     if 'piece' in rec_result:
         rec_result[rec_result.index('piece')] = 'peach'
-    return rec_result
 #correction for navi
     if 'photo' in rec_result:
         rec_result[rec_result.index('photo')] = 'follow'
-    if 'raising' in rec_result or 'raised' in rec_result:
+    if ('raising' in rec_result or 'raised' in rec_result) or 'writing' in rec_result:
         if 'left' in rec_result:
             rec_result[rec_result.index('left')]='raising left'
         if 'right' in rec_result:
             rec_result[rec_result.index('right')]='raising right'
     if 'pointing' in rec_result or 'pointed' in rec_result:
         if 'left' in rec_result:
-            rec_result[rec_result.index('left')]='raising left'
+            rec_result[rec_result.index('left')]='pointing left'
         if 'right' in rec_result:
-            rec_result[rec_result.index('right')]='raising right'
-
-
+            rec_result[rec_result.index('right')]='pointing right'
+    if 'agenda' in rec_result:
+        rec_result[rec_result.index('agenda')]='gender'
+    if 'seeking' in rec_result:
+        rec_result[rec_result.index('seeking')] ='sitting'
+    if 'seating' in rec_result:
+        rec_result[rec_result.index('seating')] ='sitting'
+    if 'men' in rec_result:
+        rec_result[rec_result.index('men')] = 'man'
         
 
         

@@ -21,6 +21,7 @@ from read_xml_files import main as read_main
 from play_signal_sound import play_signal_sound
 from answer_question import answer_question
 from speech_rec_correction import speech_rec_correction
+from kamerider_image_msgs.msg import GenderDetection
 # 定义表示任务状态的变量
 UNSTART = 0
 PROCESS = 1
@@ -49,13 +50,14 @@ class gpsr_speech_control(object):
         self.action=['bring', 'take','took','put','give','gave','deliver','delivered','place','pick']
         self.people=['person','people','girl','boy','male','female']
         self.name=['Alex','Charlie','Elizabeth','Francis','Jennifer','Linda','Mary','Patricia','Robin','Skyler','Alex','Charlie','Francis','James','John','Michael','Robert', 'Robin','Skyler','William']
-        self.gender=['boy','girl','man','woman']
+        self.gender=['boy','girl','man','woman','male','famale']
         #self.gesture=['waving','left arm','right arm','pointing to the left','pointing to the right']
         self.pose=['sitting','seeking','standing','lying']
         self.navi=['follow','followed','guide','lead','need','lady','escort','accompany','accompanied','company','meet','meeting']
         self.room=['corridor','bedroom','dining','living room','kitchen','bathroom','exit','entrance']
         #self.location=[]
-        self.gesture = ['waving', 'raising', 'pointing']
+        self.gesture = ['waving', 'raising left', 'raising right', 'pointing left', 'pointing right']
+        self.talk = ["affiliation", "relation", "joke", "yourself"]
         
         # Publisher topics
         self.pub_to_nav_topic_name = None
@@ -96,6 +98,7 @@ class gpsr_speech_control(object):
     #表征目前机器人状态的变量（主要是目前在哪里,在执行任务的哪一步）
     def init_params(self):
         # Mission keywords
+        self.target_detail = []
         self.target_action = []
         self.target_people = []
         self.target_room = []
@@ -113,7 +116,11 @@ class gpsr_speech_control(object):
         self._person = UNSTART
         self._object = UNSTART
         self._mission = UNSTART
-
+	
+	# Person status
+	self._person_pose = []
+	self._male_num = 0
+	self._female_num = 0
     #从launch文件中获取topic_name,声明Publisher和Subscriber,播放初始音频
     def get_params(self):
         # Initialize sound client
@@ -143,6 +150,8 @@ class gpsr_speech_control(object):
         #############################################
         rospy.Subscriber(self.sub_xfei_back_topic_name,String,self.xfeiCallback)
         rospy.Subscriber("/kamerider_speech/input", String, self.inputCallback)
+	#######################3
+	rospy.Subscriber("kamerider_image/gender_recognition",GenderDetection,self.image_gender_detectionCallback)
 
         self.arm_pub   = rospy.Publisher(self.pub_to_arm_topic_name, mission, queue_size=1)
         self.nav_pub   = rospy.Publisher(self.pub_to_nav_topic_name, mission, queue_size=1)
@@ -150,6 +159,11 @@ class gpsr_speech_control(object):
 
         # Start gpsr task
         self.start_gpsr()
+	
+    #############
+    def image_gender_detectionCallback(self,msg):
+	self._male_num = msg.male_num
+	self._female_num = msg.female_num
     
     def publishr_message(self, pub, msg):
         pub.publish(msg)
@@ -175,20 +189,12 @@ class gpsr_speech_control(object):
     # 这几个函数的调用都是直接调用类内函数，然后参数给一个目标的名称就行，记得加上self哦
     # 回答问题的接口我也做好了，在kamerider_speech/src里面有一个answer_question.py文件里面写了注释
     # 调用方法是直接answer_question(self.sh, self.voice, output)
-    
-    # def move_to_room(self, room_name):
-    #     msg = mission()
-    #     msg.mission_type = 'room'
-    #     msg.mission_name = str(room_name)
-    #     if self._room == UNSTART:
-    #         self.publishr_message(self.nav_pub, msg)
-    #         self._room = PROCESS
 
     def move_to_location(self, location_name):
         msg = mission()
         msg.mission_type = 'location'
         msg.mission_name = str(location_name)
-        if self._location == UNSTART:
+        if self._location == UNSTART or self._location == FINISH:
             self.publishr_message(self.nav_pub, msg)
             self._location = PROCESS
 
@@ -196,7 +202,7 @@ class gpsr_speech_control(object):
         msg = mission()
         msg.mission_type = 'person'
         msg.mission_name = str(person_name)
-        if self._person == UNSTART:
+        if self._person == UNSTART or self._person == FINISH:
             self.publishr_message(self.image_pub, msg)
             self._person = PROCESS
 
@@ -206,9 +212,17 @@ class gpsr_speech_control(object):
         msg = mission()
         msg.mission_type = 'object'
         msg.mission_name = str(object_name)
-        if self._object == UNSTART:
+        if self._object == UNSTART or self._object == FINISH:
             self.publishr_message(self.image_pub, msg)
             self._object = PROCESS
+    def detect_gesture(self, gesture, Type):
+        msg = mission()
+        msg.mission_type = Type
+        msg.mission_name = gesture
+        if self._mission == UNSTART or self._mission == FINISH:
+            self.publishr_message(self.image_pub, msg)
+            self._mission = PROCESS
+        
 
     def armCallback(self, msg):
         if msg.data == "object_target_grasped":
@@ -225,7 +239,14 @@ class gpsr_speech_control(object):
             self._person = FINISH
         if msg.data == "object_target_found":
             self._object = FINISH
-    
+        if msg.data == "target_gender_detected" or msg.data == "target_pose_detected":
+            # 如果找到指定姿态的人，或者单纯的识别到目标地点人的姿态，则返回detected
+            # 然后返回到起始地点回答
+            self._mission = FINISH
+        if msg.data == "target_gender_not_detected" or msg.data == "target_pose_not_detected":
+            # 如果当前识别到的人的gesture并不是目标gesture，则重新进入找人的循环
+            self._person = UNSTART
+
     #将识别到的句子转成list,然后收集关键词
     def xfeiCallback(self, msg):
         if msg.data == "failed":
@@ -242,6 +263,7 @@ class gpsr_speech_control(object):
         output = [item.lower() for item in output]
         print (output)
         speech_rec_correction(output)
+        print (output)
         self.init_params()
         self.parse_output(output)
         
@@ -278,6 +300,9 @@ class gpsr_speech_control(object):
         for pose in self.pose:
             if pose in output:
                 self.target_pose.append(pose)
+        for word in self.talk:
+            if word in output:
+                self.target_detail.append(word)
 
         
         #根据上面分类的情况,将问题分成5类
@@ -314,23 +339,21 @@ class gpsr_speech_control(object):
                 print("task type is {}".format(self.task_type))
                 #把room和location当做同样的性质处理
                 if len(self.target_location) ==1:
-                    #go to lacation[0]
-                    self.move_to_location(self.target_location[0])
-                    #find person
-                    while(True):
-                        if self._location == FINISH:
-                            rospy.loginfo("Start finding person")
-                            os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
-                            rospy.sleep(1)
-                            msg = mission()
-                            msg.mission_type='person'
-                            self.image_pub.publish(msg)
-                            break
-
                     if 'follow' in output:
                         print("go to {}".format(self.target_location[0]))
                         print("find person start follow until \'stop\'")
-                        
+                        #go to lacation[0]
+                        self.sh.say("Now I start navigation", self.voice)
+                        self.move_to_location(self.target_location[0])
+                        #find person
+                        while(True):
+                            if self._location == FINISH:
+                                rospy.loginfo("Start finding person")
+                                self.sh.say("Now start finding person, please wait", self.voice)
+                                os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
+                                rospy.sleep(5)
+                                self.find_person("none")
+                                break
                         #start follow until hear stop
                         while (True):
                             if self._person == FINISH:
@@ -338,34 +361,38 @@ class gpsr_speech_control(object):
                                 os.system("rosnode kill /person_detection")
                                 os.system("gnome-terminal -x bash -c 'roslaunch turtlebot_follower follower.launch'")
                                 self.sh.say("Please stand in front of me and lead me", self.voice)
-                                rospy.sleep(1)
+				self.sh.say("I will stop after hearing jack stop")
+                                rospy.sleep(2)
                                 os.system("gnome-terminal -x bash -c 'rosrun kamerider_speech follower_control.py'")
-                                rospy.sleep(1)
                                 break
                     else:
                         print("find person and start navi to {}".format(self.target_location[0]))
                         #find person and start navi to location[0]
-                        self.find_person("name")
+                        rospy.loginfo("Start finding person")
+                        self.sh.say("Now start finding person, please wait", self.voice)
+                        os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
+                        rospy.sleep(5)
+                        self.find_person("none")
+                        #go to lacation[0]
                         while (True):
-                            if self._person == FINISH:
+                            if self._person ==FINISH:
+                                self.sh.say("Now I start navigation,please follow me",self.voice)
                                 self.move_to_location(self.target_location[0])
-                                break
-
                 if len(self.target_location) ==2:
                     if output.index(self.target_location[0]) > output.index(self.target_location[1]) and 'find' not in output:
                         self.target_location.reverse()
                     if 'follow' in output:
                         # go to loc[0]
                         print("go to {} and start follow until \'stop\'".format(self.target_location[0]))
+                        self.sh.say("Now I start navigation", self.voice)
                         self.move_to_location(self.target_location[0])
                         while (True):
                             if self._location == FINISH:
                                 rospy.loginfo("Start finding person")
+                                self.sh.say("Now start finding person, please wait", self.voice)
                                 os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
-                                rospy.sleep(1)
-                                msg = mission()
-                                msg.mission_type='person'
-                                self.image_pub.publish(msg)
+                                rospy.sleep(5)
+                                self.find_person("none")
                                 break
                         while (True):
                             if self._person == FINISH:
@@ -373,132 +400,177 @@ class gpsr_speech_control(object):
                                 os.system("rosnode kill /person_detection")
                                 os.system("gnome-terminal -x bash -c 'roslaunch turtlebot_follower follower.launch'")
                                 self.sh.say("Please stand in front of me and lead me", self.voice)
-                                rospy.sleep(1)
+				self.sh.say("I will stop after hearing jack stop")
+                                rospy.sleep(2)
                                 os.system("gnome-terminal -x bash -c 'rosrun kamerider_speech follower_control.py'")
-                                rospy.sleep(1)
                                 break
 
                     else:
                         #go to loc[0] start navi to loc[1]
                         print("go to {}, start navi to {}".format(self.target_location[0],self.target_location[1]))
+                        self.sh.say("Now I start navigation", self.voice)
                         self.move_to_location(self.target_location[0])
                         while (True):
                             if self._location == FINISH:
                                 rospy.loginfo("Start finding person")
+                                self.sh.say("Now start finding person, please wait", self.voice)
                                 os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
-                                rospy.sleep(1)
-                                msg = mission()
-                                msg.mission_type='person'
-                                self.image_pub.publish(msg)
+                                rospy.sleep(5)
+                                self.find_person("none")
                                 break
                         while (True):
                             if self._person == FINISH:
-                                string = "Wow i have found you, please follow me" + self.target_location[1]
+                                os.system("rosnode kill /person_detection")
+                                string = "Wow i have found you, please follow me to " + self.target_location[1]
                                 self.sh.say (string, self.voice)
                                 self.move_to_location(self.target_location[1])
+                                break
 
             else:
                 if self.target_people  and self.target_location:
                     self.task_type = "people"
                     print("task type is {}".format(self.task_type))
                     if 'me' in output:
-                        #go to target_loc[0], find person by feature and go back to answer
+                        #go to target_loc[0], recognize person by feature and go back to answer
                         if 'gender' in output:
                             print("go to {}, recognize the gender of the person and go back to answer".format(self.target_location[0]))
+                            self.sh.say("Now I start navigation", self.voice)
                             self.move_to_location(self.target_location[0])
                             while (True):
                                 if self._location == FINISH:
                                     rospy.loginfo("Start finding person")
+                                    self.sh.say("Now start finding person, please wait", self.voice)
                                     os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
-                                    rospy.sleep(1)
-                                    msg = mission()
-                                    msg.mission_type='person'
-                                    self.image_pub.publish(msg)
+                                    rospy.sleep(5)
+                                    self.find_person("none")
                                     break
                             while (True):
                                 if self._person == FINISH:
                                     rospy.loginfo("Start gender recognition")
                                     os.system("rosnode kill /person_detection")
                                     os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection gender_recognition.py'")
-                                    rospy.sleep(3)
-                                    msg = mission()
-                                    msg.mission_type="gender"
-                                    self.image_pub.publish(msg)
+                                    rospy.sleep(5)
+                                    self.detect_gesture("none", "gender")
+                                    break
+                            while (True):
+                                if self._mission == FINISH:
+                                    rospy.loginfo("Back to the start point")
+                                    # @TODO
+                                    # 此处修改为设定好的start point
+                                    rospy.sleep(12)
+                                    self._location=UNSTART
+                                    self.move_to_location("entrance")
+                                    break
+                            while (True):
+                                if self._location==FINISH:
+                                    rospy.sleep(5)
+				    string = "the male number is " +str(self._male_num) +" the female number is " +str(self._female_num)
+				    print(string)
+			            self.sh.say(string,self.voice)
                                     break
 
                         if 'pose' in output or 'post' in output:
                             print("go to {}, recognize the pose of the person and go back to answer".format(self.target_location[0]))
+                            self.sh.say("Now I start navigation", self.voice)
                             self.move_to_location(self.target_location[0])
                             while (True):
                                 if self._location == FINISH:
                                     rospy.loginfo("Start finding person")
+                                    self.sh.say("Now start finding person, please wait", self.voice)
                                     os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
-                                    rospy.sleep(1)
-                                    msg = mission()
-                                    msg.mission_type='person'
-                                    self.image_pub.publish(msg)
+                                    rospy.sleep(5)
+                                    self.find_person("none")
                                     break
                             while (True):
                                 if self._person == FINISH:
-                                    rospy.loginfo("Start gender recognition")
+                                    rospy.loginfo("Start pose recognition")
                                     os.system("rosnode kill /person_detection")
                                     os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection pose_detection.py'")
-                                    rospy.sleep(3)
-                                    msg = mission()
-                                    msg.mission_type="pose"
-                                    self.image_pub.publish(msg)
+                                    self.detect_gesture("none", "pose")
                                     break
-
+                            while (True):
+                                if self._mission == FINISH:
+                                    rospy.loginfo("Back to the start point")
+                                    # @TODO
+                                    # 此处修改为设定好的start point
+                                    self.move_to_location("entrance")
+                                    break
                         if 'name' in output:
                             print("go to {}, ask the name of the person and go back to answer".format(self.target_location[0]))
                             while (True):
                                 if self._location == FINISH:
                                     rospy.loginfo("Start finding person")
+                                    self.sh.say("Now start finding person, please wait", self.voice)
                                     os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
-                                    rospy.sleep(1)
-                                    msg = mission()
-                                    msg.mission_type='person'
-                                    self.image_pub.publish(msg)
+                                    rospy.sleep(5)
+                                    self.find_person("none")
                                     break
                             while (True):
                                 if self._person == FINISH:
                                     os.system("rosnode kill /person_detection")
                                     self.sh.say("Hello my name is Jack, Please tell me your name", self.voice)
                                     # @TODO not finished
+                                    break
                     else:
                         #go to loc[0] and talk  #talk 写成函数,输入是output #find_person_by_feature(feature)
                         print("go to {}, find the person by feature {} and talk".format(self.target_location[0],self.target_gender+self.target_gesture+self.target_pose))
+                        self.sh.say("Now I start navigation", self.voice)
+                        gesture = ''
+                        if self.target_gesture:
+                            gesture = self.target_gesture[0]
+                        if self.target_pose:
+                            gesture = self.target_pose[0]
+                            
                         self.move_to_location(self.target_location[0])
                         while (True):
                             if self._location == FINISH:
                                 rospy.loginfo("Start finding person")
+                                self.sh.say("Now start finding person, please wait", self.voice)
                                 os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection person_detection.py'") 
-                                rospy.sleep(1)
-                                msg = mission()
-                                msg.mission_type='person'
-                                self.image_pub.publish(msg)
+                                rospy.sleep(5)
+                                self.find_person("none")
                                 break
                         while (True):
-                            if self._person == FINISH and self.target_gesture:
+                            # 如果没有找到指定特征的人，则将_person置为UNSTART，然后重新开始找人
+                            if self._person == UNSTART:
+                                self.find_person("none")
+                            # 目前只考虑pose和gender， 姓名暂时无法完成
+                            # 如果当前任务状态(_mission)为UNSTART, 表明还没有开启gesture识别的节点
+                            # 开启节点，并且发布消息进行识别
+                            if self._person == FINISH and (self.target_gesture or self.target_pose) and self._mission == UNSTART:
                                 rospy.loginfo("Start gender recognition")
                                 os.system("rosnode kill /person_detection")
                                 os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection pose_detection.py'")
-                                rospy.sleep(3)
-                                msg = mission()
-                                msg.mission_type="pose"
-                                msg.mission_name=self.target_gesture
-                                self.image_pub.publish(msg)
-                                break
-                            if self._person == FINISH and self.target_gender:
+                                rospy.sleep(5)
+                                self.detect_gesture("pose", gesture)
+
+                            if self._person == FINISH and self.target_gender and self._mission == UNSTART:
                                 rospy.loginfo("Start gender recognition")
                                 os.system("rosnode kill /person_detection")
                                 os.system("gnome-terminal -x bash -c 'rosrun kamerider_image_detection gender_recognition.py'")
                                 rospy.sleep(3)
-                                msg = mission()
-                                msg.mission_type="gender"
-                                msg.mission_name=self.target_gender
-                                self.image_pub.publish(msg)
-                                break
+                                self.detect_gesture("gender", self.target_gender)
+
+                            # 如果任务状态(_mission)为PROCESS， 表明节点已经开启，但是没有找到指定的gesture
+                            # 此时如果_person为FINISH， 表明已经找到了下一个人，
+                            if self._person == FINISH and self.target_gesture and self._mission == PROCESS:
+                                rospy.loginfo("Start gender recognition")
+                                self.detect_gesture("pose", gesture)
+
+                            if self._person == FINISH and self.target_gender and self._mission == PROCESS:
+                                rospy.loginfo("Start gender recognition")
+                                self.detect_gesture("gender", gesture)
+                            
+                            # 如果完成了指定gesture的识别，则进入说话环节
+                            # 按照要求讲笑话，介绍自己，介绍队伍，或者回答问题
+                            if self._mission == FINISH:
+                                rospy.loginfo("Target gesture detected!")
+                                string = "i have found the person {}".format(self.target_gender+self.target_gesture+self.target_pose)
+                                self.sh.say(string)
+                                if target_detail:
+                                    answer_question(self.sh, self.voice, self.target_detail)
+                                else:
+                                    self.start_gpsr()
 
                 else:
                     if (self.target_object or 'object' in output) and self.target_location:

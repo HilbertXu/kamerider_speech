@@ -44,7 +44,8 @@ def answer_question(sh, voice, output):
         sh.say("Now i will say something about my self")
         sh.say("My name is Jack, i come from Nan kai university Tian Jin province.")
         sh.say("Nice to meet you")
-
+    if "affiliation" in output or "relation" in output:
+        sh.say("Our team is affiliated to Nan Kai university")
     if "program" in output or "programming" in output or "programmer" in output:
         if "who" in output:
             if "c" in output:
